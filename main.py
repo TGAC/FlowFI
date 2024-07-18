@@ -7,8 +7,6 @@ import numpy as np
 
 import re
 from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
-from sklearn.decomposition import SparsePCA
 from sklearn.metrics.pairwise import pairwise_distances
 import matplotlib
 
@@ -126,7 +124,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("File Processor")
+        self.setWindowTitle("FlowFI")
         self.setGeometry(100, 100, 800, 600)
 
         self.central_widget = QWidget()

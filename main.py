@@ -1,8 +1,6 @@
 import sys
-import time
 import csv
 import flowio
-import os
 import numpy as np
 
 import re
@@ -10,12 +8,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics.pairwise import pairwise_distances
 import matplotlib
 
-# GUI Imports (GPT version)
-
-import urllib.request
-from io import BytesIO
 import numpy as np
-import collections
 import traceback
 
 matplotlib.use('Qt5Agg')
@@ -26,6 +19,8 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QH
 from PyQt5.QtCore import QThread, pyqtSignal, Qt,  QTimer
 from concurrent.futures import ThreadPoolExecutor
 
+
+# Excluded features that are part of the data generation process in the flow cytometry pipeline
 excludedcols = ['Saturated', 'Time', 'Sorted', 'Row', 'Column']
 excludedcols += ['Protocol', 'EventLabel', 'Regions0', 'Regions1', 'Regions2',
        'Regions3', 'Gates', 'IndexSort', 'SaturatedChannels', 'PhaseOffset',
@@ -34,9 +29,7 @@ excludedcols += ['Protocol', 'EventLabel', 'Regions0', 'Regions1', 'Regions2',
        'SaturatedChannels2', 'SpectralEventWidth', 'EventWidthInDrops',
        'SpectralUnmixingFlags', 'WaveformPresent']
 
-BOOT = 1000
-
-# Path to the global CSV file containing feature names
+BOOT = 1000 #Fixed number of boostrap iterations
 
 class WorkerThread(QThread):
     progress_update = pyqtSignal(int)
@@ -55,7 +48,7 @@ class WorkerThread(QThread):
         self.k =int(self.n/3)
         self.mode = 'cosine'
         self.t = 1
-
+        # Defaults to T=5 threads to run each bootstrap iteration
         with ThreadPoolExecutor(max_workers=5) as executor:
             futures = [executor.submit(self.process_part, i) for i in range(BOOT)]
             for future in futures:
@@ -69,6 +62,7 @@ class WorkerThread(QThread):
         ls = self.get_ulscore_parralel()
         return {"value": ls,"i": i}
     
+    # Runs the Laplace score iteration using the Graph Laplace matrix derived from the kNN graph
     def get_ulscore_parralel(self):
         n = self.n
         ones = np.ones((n,1))
@@ -94,7 +88,7 @@ class WorkerThread(QThread):
         return LSsub
 
     def get_similaritymatrix(self,X):
-        # compute pairwise euclidean distances
+        # compute pairwise similarity between the top k neighbours of each sample
         mode = self.mode
         t = self.t
         k = self.k
@@ -266,6 +260,7 @@ class MainWindow(QMainWindow):
         return (data - np.min(data)) / (np.max(data) - np.min(data))
 
     def cleandata(self,norm=True): 
+        # removes redundant data columns (low variability, few unique entries)
         included = [i for i,c in enumerate(self.columns) if c not in excludedcols]
         self.columns = self.columns[included]
         self.data = self.data[:,included]
@@ -280,6 +275,7 @@ class MainWindow(QMainWindow):
         self.data = self.data[:,included]
         self.columns = self.columns[included]
 
+        # Feature patterns for imaging and spectral features in the S8
         UVpattern = r'^UV\d+.*'
         Vpattern = r'^V\d+.*'
         Bpattern = r'^B\d+.*'
@@ -310,6 +306,7 @@ class MainWindow(QMainWindow):
         self.flabels = self.flabels[self.filter]
         self.fcolors = self.fcolors[self.filter]
 
+        # Standardise the data for feature comparison
         if norm:
                 self.data = StandardScaler().fit_transform(self.data)
 

@@ -18,6 +18,11 @@ While in the FlowFI directory, run the following in the commandline:
 ```
 python3 main.py
 ```
+FlowFI uses [FlowIO]: https://github.com/whitews/FlowIO to load .fcs files and PyQt5 to implement a Graphical User Interface (GUI) for handling of input and output files and visualisation of results.
 
-![alt text](https://github.com/jameswilsenach/FlowFI/blob/main/gui.png?raw=true)
+# Using FlowFI
 
+![gui](https://github.com/jameswilsenach/FlowFI/blob/main/gui.png?raw=true)
+
+# References
+[1] He, X., Cai, D., & Niyogi, P. (2005). Laplacian score for feature selection. Advances in neural information processing systems, 18.

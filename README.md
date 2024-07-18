@@ -33,6 +33,28 @@ FlowFI uses [FlowIO](https://github.com/whitews/FlowIO) to load .fcs files and P
 6. Save your output in .csv format using the File -> Save option.
 7. See the Help section for additional guidelines.
 
+## Creating a FlowIO Executable from source
+In order to prevent the executable from becoming too large, it is best to make the executable in a fresh virtual environment. To do this in Linux, navigate to the FlowIO directory in the command line and use the following commands:
+```
+pip install virtualenv
+virtualenv makeenv
+source makeenv/bin/activate
+pip install -r requirements.txt
+pip install pyinstaller
+pyinstaller --onefile --windowed main.py -n flowfeatures
+```
+the executable is found inside of the ./dist directory.
+
+In Windows, this would be
+```
+pip install virtualenv
+virtualenv makeenv
+makeenv\Scripts\activate
+pip install -r requirements.txt
+pip install pyinstaller
+pyinstaller --onefile --windowed main.py -n flowfeatures.exe
+```
+
 
 
 # References

@@ -18,3 +18,6 @@ While in the FlowFI directory, run the following in the commandline:
 ```
 python3 main.py
 ```
+
+![alt text](https://github.com/jameswilsenach/FlowFI/blob/main/gui.png?raw=true)
+

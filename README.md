@@ -18,13 +18,13 @@ While in the FlowFI directory, run the following in the commandline:
 ```
 python3 main.py
 ```
+
 FlowFI uses [FlowIO]: https://github.com/whitews/FlowIO to load .fcs files and PyQt5 to implement a Graphical User Interface (GUI) for handling of input and output files and visualisation of results.
 
 # Using FlowFI
 
 ![gui](https://github.com/jameswilsenach/FlowFI/blob/main/gui.png?raw=true)
 
-To analyse your data:
 1. Select your .fcs file using the browser (filtering out samples e.g. using pre-gating before saving).
 2. Run FlowFI by pressing the execute button.
 3. Features appear in order from most to least important and are colour coded by type.

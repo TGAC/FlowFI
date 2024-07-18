@@ -19,7 +19,7 @@ While in the FlowFI directory, run the following in the commandline:
 python3 main.py
 ```
 
-FlowFI uses [FlowIO]: https://github.com/whitews/FlowIO to load .fcs files and PyQt5 to implement a Graphical User Interface (GUI) for handling of input and output files and visualisation of results.
+FlowFI uses [FlowIO]:https://github.com/whitews/FlowIO to load .fcs files and PyQt5 to implement a Graphical User Interface (GUI) for handling of input and output files and visualisation of results.
 
 # Using FlowFI
 

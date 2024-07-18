@@ -33,7 +33,7 @@ FlowFI uses [FlowIO](https://github.com/whitews/FlowIO) to load .fcs files and P
 ![gui](https://github.com/jameswilsenach/FlowFI/blob/main/gui.png?raw=true)
 
 ## Creating a FlowIO Executable from source
-In order to prevent the executable from becoming too large, it is best to make the executable in a fresh virtual environment. To do this in Linux, navigate to the FlowIO directory in the command line and use the following commands:
+These instructions assume a working version of Python >=3.10 that is accessible from the command line. In order to prevent the executable from becoming too large, it is best to make the executable in a fresh virtual environment. To do this in Linux, navigate to the FlowIO directory in the command line and use the following commands:
 ```
 pip install virtualenv
 virtualenv makeenv

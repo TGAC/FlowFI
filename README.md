@@ -23,14 +23,14 @@ FlowFI uses [FlowIO](https://github.com/whitews/FlowIO) to load .fcs files and P
 
 ## Using FlowFI
 1. Select your .fcs file using the browser (filtering out samples e.g. using pre-gating before saving).
+   ![gui](https://github.com/jameswilsenach/FlowFI/blob/main/gui.png?raw=true)
 2. Run FlowFI by pressing the execute button.
+   ![gui_run](https://github.com/jameswilsenach/FlowFI/blob/main/gui_run.png?raw=true)
 3. Features appear in order from most to least important and are colour coded by type.
 4. Select or deselect the checkboxes to show or hide features in the output.
 5. Use Execute again to rerun the analysis on the subset of features that are currently select.
 6. Save your output in .csv format using the File -> Save option.
 7. See the Help section for additional guidelines.
-
-![gui](https://github.com/jameswilsenach/FlowFI/blob/main/gui.png?raw=true)
 
 ## Creating a FlowIO Executable from Source
 These instructions assume a working version of Python >=3.10 that is accessible from the command line. In order to prevent the executable from becoming too large, it is best to make the executable in a fresh virtual environment. To do this in Linux, navigate to the FlowIO directory in the command line and use the following commands:

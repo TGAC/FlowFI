@@ -24,5 +24,16 @@ FlowFI uses [FlowIO]: https://github.com/whitews/FlowIO to load .fcs files and P
 
 ![gui](https://github.com/jameswilsenach/FlowFI/blob/main/gui.png?raw=true)
 
+To analyse your data:
+1. Select your .fcs file using the browser (filtering out samples e.g. using pre-gating before saving).
+2. Run FlowFI by pressing the execute button.
+3. Features appear in order from most to least important and are colour coded by type.
+4. Select or deselect the checkboxes to show or hide features in the output.
+5. Use Execute again to rerun the analysis on the subset of features that are currently select.
+6. Save your output in .csv format using the File -> Save option.
+7. See the Help section for additional guidelines.
+
+
+
 # References
 [1] He, X., Cai, D., & Niyogi, P. (2005). Laplacian score for feature selection. Advances in neural information processing systems, 18.

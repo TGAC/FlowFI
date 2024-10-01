@@ -3,3 +3,5 @@ matplotlib
 numpy
 PyQt5
 scikit_learn
+scikit-learn-extra
+leidenalg

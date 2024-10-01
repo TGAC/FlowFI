@@ -11,16 +11,18 @@ import matplotlib
 import numpy as np
 import traceback
 
+from sklearn_extra.cluster import KMedoids
+import leidenalg as la
+import igraph as ig
+
 matplotlib.use('Qt5Agg')
 
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QLineEdit, QCheckBox, QPushButton, QProgressBar, QLabel, QFileDialog, QScrollArea, QFrame,
-                             QAction, QMessageBox, QTabWidget)
-from PyQt5.QtCore import QThread, pyqtSignal, Qt,  QTimer
+                             QAction, QMessageBox,QComboBox)
+from PyQt5.QtCore import QThread, pyqtSignal,  QTimer
 from concurrent.futures import ThreadPoolExecutor
 
-
-# Excluded features that are part of the data generation process in the flow cytometry pipeline
 excludedcols = ['Saturated', 'Time', 'Sorted', 'Row', 'Column']
 excludedcols += ['Protocol', 'EventLabel', 'Regions0', 'Regions1', 'Regions2',
        'Regions3', 'Gates', 'IndexSort', 'SaturatedChannels', 'PhaseOffset',
@@ -29,7 +31,11 @@ excludedcols += ['Protocol', 'EventLabel', 'Regions0', 'Regions1', 'Regions2',
        'SaturatedChannels2', 'SpectralEventWidth', 'EventWidthInDrops',
        'SpectralUnmixingFlags', 'WaveformPresent']
 
-BOOT = 1000 #Fixed number of boostrap iterations
+BOOT = 1000
+CLUSTERS = 10
+MEDS = CLUSTERS
+
+# Path to the global CSV file containing feature names
 
 class WorkerThread(QThread):
     progress_update = pyqtSignal(int)
@@ -48,7 +54,7 @@ class WorkerThread(QThread):
         self.k =int(self.n/3)
         self.mode = 'cosine'
         self.t = 1
-        # Defaults to T=5 threads to run each bootstrap iteration
+
         with ThreadPoolExecutor(max_workers=5) as executor:
             futures = [executor.submit(self.process_part, i) for i in range(BOOT)]
             for future in futures:
@@ -59,10 +65,9 @@ class WorkerThread(QThread):
         self.result_ready.emit()
 
     def process_part(self, i):
-        ls = self.get_ulscore_parralel()
-        return {"value": ls,"i": i}
+        ls,medoids,medlabels = self.get_ulscore_parralel()
+        return {"value": ls,"i": i,"medoids": medoids,"membership":medlabels}
     
-    # Runs the Laplace score iteration using the Graph Laplace matrix derived from the kNN graph
     def get_ulscore_parralel(self):
         n = self.n
         ones = np.ones((n,1))
@@ -73,6 +78,13 @@ class WorkerThread(QThread):
         Lsub = Dsub - Wsub
         # print(Dsub[Dsub>0],len(Dsub[Dsub>0]))
         LSsub = np.zeros(Xsub.shape[1])
+        if CLUSTERS<=self.data.shape[1]/20:
+            clusters = CLUSTERS
+        else:
+            clusters = int(self.data.shape[1]/20)
+        model = KMedoids(n_clusters=clusters,method='pam').fit(Xsub.T)
+        medoids = model.medoid_indices_
+        medlabels = model.labels_
         for r in range(Xsub.shape[1]):
             fsubr = Xsub[:,r].reshape([-1,1])
             neighb_est = ((fsubr.T @ Dsub @ ones).item()/ (ones.T @ Dsub @ ones).item())*ones
@@ -85,10 +97,10 @@ class WorkerThread(QThread):
                 LSsub[r] = 0
             else:
                 LSsub[r] = np.inf
-        return LSsub
+        return LSsub,medoids,medlabels
 
     def get_similaritymatrix(self,X):
-        # compute pairwise similarity between the top k neighbours of each sample
+        # compute pairwise euclidean distances
         mode = self.mode
         t = self.t
         k = self.k
@@ -118,7 +130,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("FlowFI")
+        self.setWindowTitle("File Processor")
         self.setGeometry(100, 100, 800, 600)
 
         self.central_widget = QWidget()
@@ -142,7 +154,8 @@ class MainWindow(QMainWindow):
 
         self.checkbox_layout = QHBoxLayout()
         self.ftypes = ['UV','V','B','YG','R','ImgB','Imaging','Misc']
-        self.colors = ['green','darkviolet','blue','darkgoldenrod','darkred','cyan','teal','black']
+        self.colors = ['green','darkviolet','blue','darkgoldenrod','darkred','saddlebrown','teal','black']
+        self.clustercolors = ['lightcoral','palegoldenrod','palegreen','lightblue','aquamarine','dimgray','peru','darkseagreen','white','cornflowerblue']
         self.selected_feature_types = self.ftypes
         self.feature_checkboxes = {}
         for i,feature_type in enumerate(self.ftypes):
@@ -165,11 +178,20 @@ class MainWindow(QMainWindow):
         self.output_widget.setLayout(self.output_layout)
         self.output_panel.setWidget(self.output_widget)
         self.output_panel.setWidgetResizable(True)
+
+        # Sorting dropdown box
+        self.sort_dropdown = QComboBox()
+        self.sort_dropdown.addItem("Sort by: Importance (features that are important to the data structure)")
+        self.sort_dropdown.addItem("Sort by: Type (UV, V, etc.)")
+        self.sort_dropdown.addItem("Sort by: Cluster (similar features)")
+        self.sort_dropdown.addItem("Sort by: Centrality (featuress typical of a cluster)")
+        self.sort_dropdown.currentIndexChanged.connect(self.update_display)
         
         self.layout.addLayout(self.checkbox_layout)
         self.layout.addLayout(self.input_layout)
         self.layout.addWidget(self.execute_button)
         self.layout.addWidget(self.progress_bar)
+        self.layout.addWidget(self.sort_dropdown)
         self.layout.addWidget(QLabel("Feature/Importance:"))
         self.layout.addWidget(self.output_panel)
 
@@ -234,6 +256,11 @@ class MainWindow(QMainWindow):
 
         self.worker = WorkerThread(self.data)
         self.feature_averages = np.zeros((self.data.shape[1],BOOT))
+        self.medoids = np.zeros((self.data.shape[1],BOOT))
+        self.memberships = np.zeros((self.data.shape[1],BOOT))
+        self.finalcluster = False
+
+        
         # self.worker.progress_update.connect(self.update_progress)
         self.worker.intermediate_result.connect(self.add_result)
         self.worker.result_ready.connect(self.finalize_results)
@@ -260,7 +287,6 @@ class MainWindow(QMainWindow):
         return (data - np.min(data)) / (np.max(data) - np.min(data))
 
     def cleandata(self,norm=True): 
-        # removes redundant data columns (low variability, few unique entries)
         included = [i for i,c in enumerate(self.columns) if c not in excludedcols]
         self.columns = self.columns[included]
         self.data = self.data[:,included]
@@ -275,7 +301,6 @@ class MainWindow(QMainWindow):
         self.data = self.data[:,included]
         self.columns = self.columns[included]
 
-        # Feature patterns for imaging and spectral features in the S8
         UVpattern = r'^UV\d+.*'
         Vpattern = r'^V\d+.*'
         Bpattern = r'^B\d+.*'
@@ -306,7 +331,6 @@ class MainWindow(QMainWindow):
         self.flabels = self.flabels[self.filter]
         self.fcolors = self.fcolors[self.filter]
 
-        # Standardise the data for feature comparison
         if norm:
                 self.data = StandardScaler().fit_transform(self.data)
 
@@ -314,10 +338,13 @@ class MainWindow(QMainWindow):
     def add_result(self, result):
         value = result['value']
         i =  result['i']
+        self.medoids[list(result['medoids'].astype(int)),i] += 1
+        self.memberships[:,i] = result['membership']
         self.feature_averages[:,i] = value
         non0 = np.any(self.feature_averages>0,axis=0)
         mean_value = np.mean(self.feature_averages[:,non0],axis=1).flatten()
-        self.result = {'ls': mean_value,'i': i}
+        mdds = np.sum(self.medoids[:,non0],axis=1).flatten()
+        self.result = {'ls': mean_value,'i': i,'medoids': mdds,'membership':result['membership']}
 
     def update_display(self):
         self.selected_feature_types = [key for key, checkbox in self.feature_checkboxes.items() if checkbox.isChecked()]
@@ -330,12 +357,33 @@ class MainWindow(QMainWindow):
             self.output_panel.setWidget(self.output_widget)
 
             mean_value = 1-self.NormalizeData(self.result['ls'])[filter]
-            sort = np.argsort(mean_value)[::-1]
+
+            # Sort the results based on the dropdown selection
+            if "Sort by: Importance" in self.sort_dropdown.currentText():
+                sort = np.argsort(mean_value)[::-1]
+            elif "Sort by: Type" in self.sort_dropdown.currentText():
+                sort = np.argsort(self.flabels[filter])
+            elif "Sort by: Centrality" in self.sort_dropdown.currentText():
+                sort = np.argsort(self.result['medoids'][filter])[::-1]
+            elif "Sort by: Cluster" in self.sort_dropdown.currentText() and self.finalcluster:
+                sort = np.argsort(self.membership[filter])
+            else:#If nothing else works (i.e. clustering not ready) then sort by Importance
+                sort = np.argsort(mean_value)[::-1]
+
             colors = self.fcolors[filter][sort]
             mean_value = mean_value[sort]
+            medoids = self.result['medoids'][filter][sort]
+            topmeds = np.argsort(medoids)[::-1][:MEDS]
             texts = self.columns[filter][sort]
             labels = self.flabels[filter][sort]
+
+
             self.progress_bar.setValue(self.worker.progress)
+            if self.finalcluster:
+                membership = self.membership
+                membership = membership[filter][sort]
+                memcolors = [self.clustercolors[m] for m in membership]
+
             for i in range(len(filter)):
                 # Create a layout for each entry
                 entry_layout = QHBoxLayout()
@@ -343,8 +391,18 @@ class MainWindow(QMainWindow):
 
                 # Create and style the label for the colored text
                 text_label = QLabel(text)
-                text_label.setStyleSheet(f"color: {colors[i]};")
-                entry_layout.addWidget(text_label)
+                if self.finalcluster:
+                    if i in topmeds:
+                        text_label.setStyleSheet(f"color: {colors[i]};font-weight: bold;background-color: {memcolors[i]};text-decoration: underline")
+                    else:
+                        text_label.setStyleSheet(f"color: {colors[i]};background-color: {memcolors[i]};")
+                    entry_layout.addWidget(text_label)
+                else:
+                    if i in topmeds:
+                        text_label.setStyleSheet(f"color: {colors[i]};font-weight: bold;text-decoration: underline")
+                    else:
+                        text_label.setStyleSheet(f"color: {colors[i]};")
+                    entry_layout.addWidget(text_label)
 
                 # Create and style the bar for the value
                 bar = QFrame()
@@ -362,10 +420,24 @@ class MainWindow(QMainWindow):
             self.output_widget.adjustSize()
             QApplication.processEvents()
 
+    def consensusclustering(self):
+        memlabels = np.unique(self.memberships.flatten())
+        D = np.zeros([self.memberships.shape[0],self.memberships.shape[0]])
+        for m in memlabels:
+            mem = (self.memberships == m)*1.
+            D += mem @ mem.T
+        np.fill_diagonal(D,0)
+        # D /= self.memberships.shape[1]
+        self.membership = np.array(la.find_partition(ig.Graph.Adjacency(D), la.ModularityVertexPartition).membership)
+        self.finalcluster = True
+
     def finalize_results(self):
         self.output_widget.adjustSize()
+        self.consensusclustering()
         self.update_display()
         self.result['Relative Importance'] = 1 - self.NormalizeData(self.result['ls'])
+        self.result['Centrality'] = self.NormalizeData(self.result['medoids'])
+        self.result['Membership'] = self.membership
         QMessageBox.information(self, "Information", "Processing complete!")
         self.update_timer.stop()  # Stop the update timer
 
@@ -379,14 +451,16 @@ class MainWindow(QMainWindow):
         if filepath:
             try:
                 with open(filepath, 'w', newline='') as csvfile:
-                    fieldnames = ['feature','ri', 'ls']
+                    fieldnames = ['feature','ri', 'ls','membership','centrality']
                     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
                     writer.writeheader()
                     result = self.result['ls']
                     impresult = self.result['Relative Importance']
                     columns = self.columns
+                    memb = self.result['Membership']
+                    centrality = self.result['Centrality']
                     for i in range(len(result)):
-                        writer.writerow({'feature': self.columns[i], 'ri': impresult[i], 'ls': result[i]})
+                        writer.writerow({'feature': columns[i], 'ri': impresult[i], 'ls': result[i],'membership':memb[i],'centrality': centrality[i]})
                 QMessageBox.information(self, "Success", "Output successfully saved to CSV file.")
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to save output to CSV file: {e}")
@@ -402,6 +476,7 @@ class MainWindow(QMainWindow):
         5. Use the boxes to toggle which types of features to display.
         6. De/selected boxes and executing allows you to test a subset of features.
         7. Use the 'File' menu to save the output as a CSV file.
+        8. ri = (Relative) Importance, ls = Raw (Laplacian) Score, membership = Cluster, centrality = Representativeness
         """
         QMessageBox.information(self, "README", readme_text)
 

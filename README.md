@@ -42,7 +42,21 @@ FlowFI uses [FlowIO](https://github.com/whitews/FlowIO) to load .fcs files and P
 
 7. See the Help section for additional guidelines.
 
-## Creating a FlowFI Executable from Source
+# Understanding the Feature/Importance Window:
+Features are colour-coded in FlowFI to correspond to their type (e.g. Imaging, red, blue, etc.). After execution, each feature is assigned an importance score. This is shown in the bar to the right with a large bar indicating high importance. By default, features are ordered by their estimated importance but this can be changed using the dropdown "Sort by:" menu. Features are also assigned a cluster (coloured border) and features that are the most central (i.e. typical of a collection of features) are shown in bold and underlined.
+
+
+# FlowFI Save Files:
+FlowFI saves the output of the analysis in a CSV file (excel-readable table) with columns:\
+feature - name of the corresponding feature in the original fcs file\
+ri - Relative Importance, this is the importance of the feature from 0-1 with 1 being the highest importance\
+ls - Laplace Score - This is the raw basis of the importance which is used for algorithmic purposes\
+membership - numerical id of the cluster this feature belongs to\
+centrality - numerical score from 0-1 with 1 corresponding to the feature with the highest centrality
+
+
+
+# Creating a FlowFI Executable from Source
 These instructions assume a working version of Python >=3.10 that is accessible from the command line. In order to prevent the executable from becoming too large, it is best to make the executable in a fresh virtual environment. To do this in Linux, navigate to the FlowIO directory in the command line and use the following commands:
 ```
 pip install virtualenv

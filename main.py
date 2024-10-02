@@ -393,9 +393,9 @@ class MainWindow(QMainWindow):
                 text_label = QLabel(text)
                 if self.finalcluster:
                     if i in topmeds:
-                        text_label.setStyleSheet(f"color: {colors[i]};font-weight: bold;background-color: {memcolors[i]};text-decoration: underline")
+                        text_label.setStyleSheet(f"color: {colors[i]};font-weight: bold;border: 3px solid {memcolors[i]};text-decoration: underline")
                     else:
-                        text_label.setStyleSheet(f"color: {colors[i]};background-color: {memcolors[i]};")
+                        text_label.setStyleSheet(f"color: {colors[i]};border: 3px solid {memcolors[i]};")
                     entry_layout.addWidget(text_label)
                 else:
                     if i in topmeds:

@@ -31,9 +31,10 @@ excludedcols += ['Protocol', 'EventLabel', 'Regions0', 'Regions1', 'Regions2',
        'SaturatedChannels2', 'SpectralEventWidth', 'EventWidthInDrops',
        'SpectralUnmixingFlags', 'WaveformPresent']
 
-BOOT = 1000
+BOOT = 10
 CLUSTERS = 10
 MEDS = CLUSTERS
+BOOTSIZE = 200
 
 # Path to the global CSV file containing feature names
 
@@ -48,7 +49,7 @@ class WorkerThread(QThread):
 
     def run(self):
         N = self.data.shape[0]
-        self.n=200
+        self.n=BOOTSIZE
         if N<self.n:
             self.n = N
         self.k =int(self.n/3)
@@ -76,7 +77,6 @@ class WorkerThread(QThread):
         Wsub = self.get_similaritymatrix(Xsub)
         Dsub = np.diagflat(np.sum(Wsub,axis=0))
         Lsub = Dsub - Wsub
-        # print(Dsub[Dsub>0],len(Dsub[Dsub>0]))
         LSsub = np.zeros(Xsub.shape[1])
         if CLUSTERS<=self.data.shape[1]/20:
             clusters = CLUSTERS
@@ -359,29 +359,38 @@ class MainWindow(QMainWindow):
             mean_value = 1-self.NormalizeData(self.result['ls'])[filter]
 
             # Sort the results based on the dropdown selection
+            sorting = True
             if "Sort by: Importance" in self.sort_dropdown.currentText():
-                sort = np.argsort(mean_value)[::-1]
-            elif "Sort by: Type" in self.sort_dropdown.currentText():
-                sort = np.argsort(self.flabels[filter])
-            elif "Sort by: Centrality" in self.sort_dropdown.currentText():
-                sort = np.argsort(self.result['medoids'][filter])[::-1]
-            elif "Sort by: Cluster" in self.sort_dropdown.currentText() and self.finalcluster:
-                sort = np.argsort(self.membership[filter])
-            else:#If nothing else works (i.e. clustering not ready) then sort by Importance
-                sort = np.argsort(mean_value)[::-1]
+                sort = np.argsort(-mean_value)
+                sorting = False
+            else:
+                second = -mean_value
+                if "Sort by: Type" in self.sort_dropdown.currentText():
+                    first = self.flabels[filter]
+                elif "Sort by: Centrality" in self.sort_dropdown.currentText():
+                    first = -self.result['medoids'][filter]
+                elif "Sort by: Cluster" in self.sort_dropdown.currentText() and self.finalcluster:
+                    first = self.membership[filter]
+                else:#If nothing else works (i.e. clustering not ready) then sort by Importance
+                    sort = np.argsort(second)
+                    sorting = False
+            if sorting:
+                sort = np.lexsort([second,first])
+                sorting = False
 
             colors = self.fcolors[filter][sort]
             mean_value = mean_value[sort]
             medoids = self.result['medoids'][filter][sort]
-            topmeds = np.argsort(medoids)[::-1][:MEDS]
+            # topmeds = np.argsort(medoids)[::-1][:MEDS]
+            topmeds = np.where(medoids>0)[0]
             texts = self.columns[filter][sort]
             labels = self.flabels[filter][sort]
 
 
             self.progress_bar.setValue(self.worker.progress)
             if self.finalcluster:
-                membership = self.membership
-                membership = membership[filter][sort]
+                membership = self.membership[filter][sort]
+                # membership = self.membership.astype(int)
                 memcolors = [self.clustercolors[m] for m in membership]
 
             for i in range(len(filter)):

@@ -31,7 +31,7 @@ excludedcols += ['Protocol', 'EventLabel', 'Regions0', 'Regions1', 'Regions2',
        'SaturatedChannels2', 'SpectralEventWidth', 'EventWidthInDrops',
        'SpectralUnmixingFlags', 'WaveformPresent']
 
-BOOT = 10
+BOOT = 1000
 CLUSTERS = 10
 MEDS = CLUSTERS
 BOOTSIZE = 200

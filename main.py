@@ -52,12 +52,13 @@ class WorkerThread(QThread):
         self.n=BOOTSIZE
         if N<self.n:
             self.n = N
+            self.boots = max([int(N/2),2])
         self.k =int(self.n/3)
         self.mode = 'cosine'
         self.t = 1
 
         with ThreadPoolExecutor(max_workers=5) as executor:
-            futures = [executor.submit(self.process_part, i) for i in range(BOOT)]
+            futures = [executor.submit(self.process_part, i) for i in range(self.boots)]
             for future in futures:
                 result = future.result()
                 self.intermediate_result.emit(result)
@@ -255,9 +256,10 @@ class MainWindow(QMainWindow):
         self.progress_bar.setValue(0)
 
         self.worker = WorkerThread(self.data)
-        self.feature_averages = np.zeros((self.data.shape[1],BOOT))
-        self.medoids = np.zeros((self.data.shape[1],BOOT))
-        self.memberships = np.zeros((self.data.shape[1],BOOT))
+        self.boots = self.worker.boots
+        self.feature_averages = np.zeros((self.data.shape[1],self.boots))
+        self.medoids = np.zeros((self.data.shape[1],self.boots))
+        self.memberships = np.zeros((self.data.shape[1],self.boots))
         self.finalcluster = False
 
         

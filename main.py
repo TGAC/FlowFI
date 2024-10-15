@@ -155,7 +155,7 @@ class MainWindow(QMainWindow):
         self.checkbox_layout = QHBoxLayout()
         self.ftypes = ['UV','V','B','YG','R','ImgB','Imaging','Misc']
         self.colors = ['green','darkviolet','blue','darkgoldenrod','darkred','saddlebrown','teal','black']
-        self.clustercolors = ['lightcoral','palegoldenrod','palegreen','lightblue','aquamarine','dimgray','peru','darkseagreen','white','cornflowerblue']
+        self.clustercolors = ['lightcoral','palegoldenrod','palegreen','lightblue','aquamarine','dimgray','peru','darkseagreen','white','cornflowerblue','green','darkviolet','blue','darkgoldenrod','darkred','saddlebrown','teal','black']
         self.selected_feature_types = self.ftypes
         self.feature_checkboxes = {}
         for i,feature_type in enumerate(self.ftypes):

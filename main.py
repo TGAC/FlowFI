@@ -37,7 +37,7 @@ BOOT = 1000
 CLUSTERS = 10
 MEDS = CLUSTERS
 BOOTSIZE = 200
-EVAL = True
+EVAL = False
 
 # Path to the global CSV file containing feature names
 
@@ -243,6 +243,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Warning", "No features found in the FCS file.")
             return
         
+        self.execute_button.setEnabled(False)
         self.start_time = time.time()
         self.output_layout.removeWidget(self.output_widget)
         self.output_widget = QWidget()
@@ -453,6 +454,7 @@ class MainWindow(QMainWindow):
             self.end_time = time.time()
             self.total_time = np.round(self.end_time-self.start_time,2)
             self.show_processing_time()
+        self.execute_button.setEnabled(True)
 
     def finalize_results(self):
         self.output_widget.adjustSize()

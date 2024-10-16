@@ -7,7 +7,7 @@ The software is capable of analysing data from any generic .fcs file but was tes
 FlowFI allows for a subset of features (e.g. imaging vs specific red, violet or blue features) to be analysed, allowing for results to be iteratively refined based on the subset of interest.
 
 ## Installation
-To install FlowFI in Python 3.10 or above, download the repository and navigate to the FlowFI directory. Then use the following command in your command line:
+To install FlowFI in Python 3.10, download the repository and navigate to the FlowFI directory. Then use the following command in your command line:
 
 ```
 pip install -r requirements.txt
@@ -57,7 +57,7 @@ centrality - numerical score from 0-1 with 1 corresponding to the feature with t
 
 
 # Creating a FlowFI Executable from Source
-These instructions assume a working version of Python >=3.10 that is accessible from the command line. In order to prevent the executable from becoming too large, it is best to make the executable in a fresh virtual environment. To do this in Linux, navigate to the FlowIO directory in the command line and use the following commands:
+These instructions assume a working version of Python 3.10 that is accessible from the command line. In order to prevent the executable from becoming too large, it is best to make the executable in a fresh virtual environment. To do this in Linux, navigate to the FlowIO directory in the command line and use the following commands:
 ```
 pip install virtualenv
 virtualenv makeenv

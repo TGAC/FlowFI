@@ -3,10 +3,12 @@ import csv
 import flowio
 import numpy as np
 
+
 import re
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics.pairwise import pairwise_distances
 import matplotlib
+import time
 
 import numpy as np
 import traceback
@@ -34,6 +36,7 @@ BOOT = 1000
 CLUSTERS = 10
 MEDS = CLUSTERS
 BOOTSIZE = 200
+EVAL = True
 
 # Path to the global CSV file containing feature names
 
@@ -45,8 +48,6 @@ class WorkerThread(QThread):
     def __init__(self, data):
         super().__init__()
         self.data = data
-
-    def run(self):
         N = self.data.shape[0]
         self.n=BOOTSIZE
         self.boots = BOOT
@@ -56,11 +57,13 @@ class WorkerThread(QThread):
         self.k =int(self.n/3)
         self.mode = 'cosine'
         self.t = 1
-        self.progress = np.zeros(self.boots)
+        self.progress = 0
+
+    def run(self):
         for i in range(self.boots):
             result = self.process_part(i)
             self.intermediate_result.emit(result)
-            self.progress[i] = 1
+            self.progress += 1
         self.result_ready.emit()
 
     def process_part(self, i):
@@ -236,7 +239,8 @@ class MainWindow(QMainWindow):
         if not hasattr(self,'data'):
             QMessageBox.warning(self, "Warning", "No features found in the FCS file.")
             return
-
+        
+        self.start_time = time.time()
         self.output_layout.removeWidget(self.output_widget)
         self.output_widget = QWidget()
         self.output_layout = QVBoxLayout()
@@ -331,7 +335,7 @@ class MainWindow(QMainWindow):
         self.fcolors = self.fcolors[self.filter]
 
         if norm:
-                self.data = StandardScaler().fit_transform(self.data)
+            self.data = StandardScaler().fit_transform(self.data)
 
 
     def add_result(self, result):
@@ -385,7 +389,7 @@ class MainWindow(QMainWindow):
             texts = self.columns[filter][sort]
             labels = self.flabels[filter][sort]
 
-            prog = int(100*np.sum(self.worker.progress)/self.boots)
+            prog = int(100*self.worker.progress/self.boots)
             self.progress_bar.setValue(prog)
             if self.finalcluster:
                 membership = self.membership[filter][sort]
@@ -428,6 +432,10 @@ class MainWindow(QMainWindow):
             self.output_widget.adjustSize()
             QApplication.processEvents()
 
+    def show_processing_time(self):
+        text = "Processing time: " + str(self.total_time) + 's'
+        QMessageBox.information(self, "Processing Time", text)
+
     def consensusclustering(self):
         memlabels = np.unique(self.memberships.flatten())
         D = np.zeros([self.memberships.shape[0],self.memberships.shape[0]])
@@ -438,6 +446,10 @@ class MainWindow(QMainWindow):
         # D /= self.memberships.shape[1]
         self.membership = np.array(la.find_partition(ig.Graph.Adjacency(D), la.ModularityVertexPartition).membership)
         self.finalcluster = True
+        if EVAL == True:
+            self.end_time = time.time()
+            self.total_time = np.round(self.end_time - self.start_time,2)
+            self.show_processing_time()
 
     def finalize_results(self):
         self.output_widget.adjustSize()

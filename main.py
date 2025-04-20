@@ -1,41 +1,29 @@
 import sys
-# import time
 import csv
 import flowio
-# import os
 import numpy as np
-from scipy.stats import kendalltau
-from sklearn.metrics import pairwise_distances,adjusted_mutual_info_score
-from sklearn_extra.cluster import KMedoids
-from sklearn.preprocessing import StandardScaler
 
 import re
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics.pairwise import pairwise_distances
 import matplotlib
+import time
 
-import numpy as np; 
-
+import numpy as np
 import traceback
+
+from sklearn_extra.cluster import KMedoids
 import leidenalg as la
 import igraph as ig
 
-# timer for evaluation
-import time
+matplotlib.use('Qt5Agg')
 
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QLineEdit, QCheckBox, QPushButton, QProgressBar, QLabel, QFileDialog, QScrollArea, QFrame,
                              QAction, QMessageBox,QComboBox)
 from PyQt5.QtCore import QThread, pyqtSignal,  QTimer
+from concurrent.futures import ThreadPoolExecutor
 
-EVAL = False
-# SIM = False
-#from sklearn.datasets import make_classification
-
-BOOT = 1000
-CLUSTERS = 10
-# MEDS = CLUSTERS
-BOOTSIZE = 200
-
-matplotlib.use('Qt5Agg')
 excludedcols = ['Saturated', 'Time', 'Sorted', 'Row', 'Column']
 excludedcols += ['Protocol', 'EventLabel', 'Regions0', 'Regions1', 'Regions2',
        'Regions3', 'Gates', 'IndexSort', 'SaturatedChannels', 'PhaseOffset',
@@ -44,6 +32,12 @@ excludedcols += ['Protocol', 'EventLabel', 'Regions0', 'Regions1', 'Regions2',
        'SaturatedChannels2', 'SpectralEventWidth', 'EventWidthInDrops',
        'SpectralUnmixingFlags', 'WaveformPresent']
 
+
+BOOT = 1000
+CLUSTERS = 10
+MEDS = CLUSTERS
+BOOTSIZE = 200
+EVAL = False
 
 # Path to the global CSV file containing feature names
 
@@ -55,50 +49,29 @@ class WorkerThread(QThread):
     def __init__(self, data):
         super().__init__()
         self.data = data
-        
         N = self.data.shape[0]
         self.n=BOOTSIZE
         self.boots = BOOT
         if N<self.n:
-            self.n = int(max([N/2,2]))
-            self.boots = N
+            self.n = N
+            self.boots = max([int(N/2),2])
         self.k =int(self.n/3)
         self.mode = 'cosine'
         self.t = 1
-        self.progress = 0
-        self.early = 0
 
     def run(self):
-        for i in range(self.boots):
-            result = self.process_part(i)
-            self.intermediate_result.emit(result)
-            self.progress += 1
-            if self.early:
-                break
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            futures = [executor.submit(self.process_part, i) for i in range(self.boots)]
+            for future in futures:
+                result = future.result()
+                self.intermediate_result.emit(result)
+                self.progress = int((len(futures) - len([f for f in futures if not f.done()]))/len(futures)*100)
+                # self.progress_update.emit(progress)
         self.result_ready.emit()
 
     def process_part(self, i):
         ls,medoids,medlabels = self.get_ulscore_parralel()
         return {"value": ls,"i": i,"medoids": medoids,"membership":medlabels}
-    
-    def getclust(self,mems):
-        memlabels = np.unique(mems.flatten())
-        D = np.zeros([mems.shape[0],mems.shape[0]])
-        for m in memlabels:
-            mem = (mems == m)*1.
-            D += mem @ mem.T
-        np.fill_diagonal(D,0)
-        return np.array(la.find_partition(ig.Graph.Adjacency(D), la.ModularityVertexPartition).membership)
-    
-    def kmedoids(self,X):
-        if CLUSTERS<=self.data.shape[1]/20:
-            clusters = CLUSTERS
-        else:
-            clusters = int(self.data.shape[1]/20)
-        model = KMedoids(n_clusters=clusters,method='pam').fit(X)
-        medoids = model.medoid_indices_
-        medlabels = model.labels_
-        return medoids,medlabels
     
     def get_ulscore_parralel(self):
         n = self.n
@@ -109,10 +82,17 @@ class WorkerThread(QThread):
         Dsub = np.diagflat(np.sum(Wsub,axis=0))
         Lsub = Dsub - Wsub
         LSsub = np.zeros(Xsub.shape[1])
-        for r in range(Xsub.shape[1]):#iterate over features
+        if CLUSTERS<=self.data.shape[1]/20:
+            clusters = CLUSTERS
+        else:
+            clusters = int(self.data.shape[1]/20)
+        model = KMedoids(n_clusters=clusters,method='pam').fit(Xsub.T)
+        medoids = model.medoid_indices_
+        medlabels = model.labels_
+        for r in range(Xsub.shape[1]):
             fsubr = Xsub[:,r].reshape([-1,1])
             neighb_est = ((fsubr.T @ Dsub @ ones).item()/ (ones.T @ Dsub @ ones).item())*ones
-            fsubr_est = (fsubr - neighb_est)#subtract nbh mean est of feature to centre feature vector
+            fsubr_est = (fsubr - neighb_est)
             d = (fsubr_est.T @ Dsub @ fsubr_est).item()
             num = (fsubr_est.T @ Lsub @ fsubr_est).item()
             if d > 0 and num>0:
@@ -121,40 +101,40 @@ class WorkerThread(QThread):
                 LSsub[r] = 0
             else:
                 LSsub[r] = np.inf
-        medoids,medlabels = self.kmedoids(Xsub.T)
         return LSsub,medoids,medlabels
 
     def get_similaritymatrix(self,X):
-
+        # compute pairwise euclidean distances
+        mode = self.mode
         t = self.t
         k = self.k
         n = X.shape[0]
-
-        # compute pairwise distances
-        D = self.getpwd(X,self.mode)
-        Dtop = np.sort(D, axis=1)[:,k+1]
-        G = D<=Dtop
-        np.fill_diagonal(G,0)
-        W = np.zeros([n,n])
-        if self.mode=='heat':
-            W[G>0] = np.exp(-D[G>0]**2/(2*t**2))
-        else:#cosine is default
-            W[G>0] = np.abs(1-D[G>0])
-        return W
-    
-    def getpwd(self,X,mode='cosine'):
-        if mode == 'heat':#heat kernel based pwd (euclidean)
+        if mode == 'heat':
             D = pairwise_distances(X)
-        if mode == 'cosine':#cosine pwd
+
+            Dtop = np.sort(D, axis=1)[:,k+1]
+            G = D<=Dtop
+            np.fill_diagonal(G,0)
+            W = np.zeros([n,n])
+            W[G>0] = np.exp(-D[G>0]**2/(2*t**2))
+
+        if mode == 'cosine':
+
             D = pairwise_distances(X,metric='cosine')
-        return D
+
+            Dtop = np.sort(D, axis=1)[:,k+1]
+            G = D<=Dtop
+            np.fill_diagonal(G,0)
+            W = np.zeros([n,n])
+            W[G>0] = np.abs(1-D[G>0])
+            return W
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("FlowFI: Flow cytometry Feature Importance")
+        self.setWindowTitle("File Processor")
         self.setGeometry(100, 100, 800, 600)
 
         self.central_widget = QWidget()
@@ -271,13 +251,18 @@ class MainWindow(QMainWindow):
         self.output_widget.setLayout(self.output_layout)
         self.output_panel.setWidget(self.output_widget)
 
+        # for feature_type in self.ftypes:
+        #     if feature_type in self.selected_feature_types:
+        #         self.feature_checkboxes[feature_type].setEnabled(False)
+        #     else:
+        #         self.feature_checkboxes[feature_type].setEnabled(False)
+
 
         self.progress_bar.setValue(0)
 
         self.worker = WorkerThread(self.data)
         self.boots = self.worker.boots
         self.feature_averages = np.zeros((self.data.shape[1],self.boots))
-        self.calculated = np.zeros((self.boots))
         self.medoids = np.zeros((self.data.shape[1],self.boots))
         self.memberships = np.zeros((self.data.shape[1],self.boots))
         self.finalcluster = False
@@ -299,17 +284,6 @@ class MainWindow(QMainWindow):
             self.columns = np.array([fcdata.channels[c]['PnN'] for c in fcdata.channels])
             self.data = np.reshape(fcdata.events,[-1,fcdata.channel_count])
             self.cleandata() 
-            # if SIM:
-            #     n_features = self.data.shape[1]
-            #     ninf = np.max([int(n_features*.01),1])
-            #     nred = np.max([int(n_features*.01),1])
-            #     cshape = int(self.data.shape[0]*.6)
-            #     self.data,_ = make_classification(self.data.shape[0], n_features,n_repeated=0,weights=[.1],n_informative=ninf,n_redundant=nred,n_clusters_per_class=1,shuffle=False)
-            #     ncontam = n_features - ninf - nred
-            #     contam,_ = make_classification(cshape, ncontam,n_repeated=0,weights=[.5],n_informative=ncontam,n_redundant=0,n_clusters_per_class=1,shuffle=False)
-            #     self.data[:cshape,-ncontam:] += contam
-            #     self.meaningful = np.zeros(self.data.shape[1])
-            #     self.meaningful[:(ninf+nred)] = 1
 
             
         except Exception as e:
@@ -365,33 +339,8 @@ class MainWindow(QMainWindow):
         self.fcolors = self.fcolors[self.filter]
 
         if norm:
-            self.data = StandardScaler().fit_transform(self.data)
-    
-    def splittest(self,data,th=1e-2):
-        shape = data.shape[1]
-        inds = np.arange(shape)
-        np.random.shuffle(inds)
-        data = data[:,inds]
-        splitat = int(shape/2)
-        inds1 = inds[:splitat]
-        inds2 = inds[splitat:]
-        data1 = np.mean(data[:,inds1],axis=1)
-        data2 = np.mean(data[:,inds2],axis=1)
-        kt = kendalltau(data1,data2)
-        kt = kt.statistic
-        if 1-kt<=th:
-            return True,inds1,inds2
-        else:
-            return False,inds1,inds2
-    
-    def consensusclustering_test(self,inds1,inds2,th=1e-2):
-        mems = self.memberships[:,self.calculated>0]
-        mems1 = mems[:,inds1]
-        mems2 = mems[:,inds2]
-        membership1 = self.worker.getclust(mems1)
-        membership2 = self.worker.getclust(mems2)
-        ami = adjusted_mutual_info_score(membership1,membership2)
-        return ami>th
+                self.data = StandardScaler().fit_transform(self.data)
+
 
     def add_result(self, result):
         value = result['value']
@@ -399,29 +348,10 @@ class MainWindow(QMainWindow):
         self.medoids[list(result['medoids'].astype(int)),i] += 1
         self.memberships[:,i] = result['membership']
         self.feature_averages[:,i] = value
-        self.calculated[i] = 1
-        non0 = self.calculated>0
-        imp_calculated = self.feature_averages[:,non0]
-        mean_value = np.mean(imp_calculated,axis=1).flatten()
+        non0 = np.any(self.feature_averages>0,axis=0)
+        mean_value = np.mean(self.feature_averages[:,non0],axis=1).flatten()
         mdds = np.sum(self.medoids[:,non0],axis=1).flatten()
         self.result = {'ls': mean_value,'i': i,'medoids': mdds,'membership':result['membership']}
-        if np.sum(self.calculated)>10:
-            isconv,inds1,inds2 = self.splittest(imp_calculated)
-            if isconv:
-                # print('The importance method converged at or before ',np.sum(self.calculated),' iterations')
-                # if SIM:
-                #     mean_value = 1 - self.NormalizeData(self.result['ls'])
-                #     nmean = np.sum(self.meaningful)
-                #     found = np.argsort(-mean_value)<nmean
-                #     found = np.dot(found,self.meaningful)
-                #     print('Acccuracy',np.round(100*found/nmean,2))
-                isclust = self.consensusclustering_test(inds1,inds2)
-                if isclust:
-                    # print('The clustering also converged at or before ',np.sum(self.calculated),' iterations')
-                    self.end_time = time.time()
-                    self.total_time = np.round(self.end_time - self.start_time,2)
-                    # print('Processing time was',self.total_time)
-                    self.worker.early = 1
 
     def update_display(self):
         self.selected_feature_types = [key for key, checkbox in self.feature_checkboxes.items() if checkbox.isChecked()]
@@ -463,10 +393,8 @@ class MainWindow(QMainWindow):
             texts = self.columns[filter][sort]
             labels = self.flabels[filter][sort]
 
-            if self.worker.early:
-                self.worker.progress = self.boots    
-            prog = int(100*self.worker.progress/self.boots)
-            self.progress_bar.setValue(prog)
+
+            self.progress_bar.setValue(self.worker.progress)
             if self.finalcluster:
                 membership = self.membership[filter][sort]
                 # membership = self.membership.astype(int)
@@ -512,22 +440,25 @@ class MainWindow(QMainWindow):
         text = "Processing time: " + str(self.total_time) + 's'
         QMessageBox.information(self, "Processing Time", text)
 
-    def consensusclustering_final(self):
-        self.membership = self.worker.getclust(self.memberships)
+    def consensusclustering(self):
+        memlabels = np.unique(self.memberships.flatten())
+        D = np.zeros([self.memberships.shape[0],self.memberships.shape[0]])
+        for m in memlabels:
+            mem = (self.memberships == m)*1.
+            D += mem @ mem.T
+        np.fill_diagonal(D,0)
+        # D /= self.memberships.shape[1]
+        self.membership = np.array(la.find_partition(ig.Graph.Adjacency(D), la.ModularityVertexPartition).membership)
         self.finalcluster = True
         if EVAL == True:
             self.end_time = time.time()
-            self.total_time = np.round(self.end_time - self.start_time,2)
+            self.total_time = np.round(self.end_time-self.start_time,2)
             self.show_processing_time()
         self.execute_button.setEnabled(True)
 
     def finalize_results(self):
-        if self.worker.early:
-            self.memberships = self.memberships[:,self.calculated>0]
-            self.feature_averages = self.feature_averages[:,self.calculated>0]
-            self.medoids = self.medoids[:,self.calculated>0]
         self.output_widget.adjustSize()
-        self.consensusclustering_final()
+        self.consensusclustering()
         self.update_display()
         self.result['Relative Importance'] = 1 - self.NormalizeData(self.result['ls'])
         self.result['Centrality'] = self.NormalizeData(self.result['medoids'])

@@ -21,7 +21,7 @@ python3 main.py
 
 FlowFI uses [FlowIO](https://github.com/whitews/FlowIO) to load .fcs files and PyQt5 to implement a Graphical User Interface (GUI) for handling of input and output files and visualisation of results.
 
-## Using FlowFI
+## Using FlowFI: Feature Anlysis
 1. Select your .fcs file using the browser (filtering out samples e.g. using pre-gating before saving).
 
 ![gui](https://github.com/jameswilsenach/FlowFI/blob/main/gui.png?raw=true)
@@ -42,7 +42,7 @@ FlowFI uses [FlowIO](https://github.com/whitews/FlowIO) to load .fcs files and P
 
 7. See the Help section for additional guidelines.
 
-# Understanding the Feature/Importance Window:
+# Understanding the Feature/Importance Tab:
 Features are colour-coded in FlowFI to correspond to their type (e.g. Imaging, red, blue, etc.). After execution, each feature is assigned an importance score. This is shown in the bar to the right with a large bar indicating high importance. By default, features are ordered by their estimated importance but this can be changed using the dropdown "Sort by:" menu. Features are also assigned a cluster (coloured border) and features that are the most central (i.e. typical of a collection of features) are shown in bold and underlined.
 
 

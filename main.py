@@ -42,7 +42,7 @@ from PyQt5.QtCore import QThread, pyqtSignal,  QTimer, Qt,QDir
 
 from PyQt5.QtGui import QPixmap, QImage
 
-VAL = False
+EVAL = False
 #SIM = False
 BOOT = 200
 CLUSTERS = 10

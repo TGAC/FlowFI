@@ -28,7 +28,7 @@ FlowFI uses [FlowIO](https://github.com/whitews/FlowIO) to load .fcs files and P
 
 2. Run FlowFI by pressing the execute button.
 
-![gui_run](https://github.com/jameswilsenach/FlowFI/blob/main/gui_run.png?raw=true)
+![gui_run](https://github.com/jameswilsenach/FlowFI/blob/main/analysis_inprogress.png?raw=true)
 
 3. Features appear in order from most to least important and are colour coded by type with the bar representing relative imprtance from 0-1.
 
@@ -36,7 +36,7 @@ FlowFI uses [FlowIO](https://github.com/whitews/FlowIO) to load .fcs files and P
 
 5. Use Execute again to rerun the analysis on the subset of features that are currently select.
 
-![gui_refine](https://github.com/jameswilsenach/FlowFI/blob/main/gui_refine.png?raw=true)  
+![gui_refine](https://github.com/jameswilsenach/FlowFI/blob/main/analysis_complete.png?raw=true)  
 
 6. Save your output in .csv format using the File -> Save option.
 

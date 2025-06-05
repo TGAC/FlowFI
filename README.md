@@ -24,7 +24,7 @@ FlowFI uses [FlowIO](https://github.com/whitews/FlowIO) to load .fcs files and P
 ## Using FlowFI: Feature Anlysis
 1. Select your .fcs file using the browser (filtering out samples e.g. using pre-gating before saving).
 
-![gui](https://github.com/jameswilsenach/FlowFI/blob/main/gui.png?raw=true)
+![gui](https://github.com/jameswilsenach/FlowFI/blob/main/analysis_start.png?raw=true)
 
 2. Run FlowFI by pressing the execute button.
 

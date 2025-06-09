@@ -7,13 +7,15 @@ The software is capable of analysing data from any generic .fcs file but was tes
 FlowFI allows for a subset of features (e.g. imaging vs specific red, violet or blue features) to be analysed, allowing for results to be iteratively refined based on the subset of interest.
 
 ## Installation
+For Windows machines simply download the flowfi_vXX.zip file in the repository and unzip to ana available folder. Run the program as you would any other .exe file.
+
 To install FlowFI in Python 3.10, download the repository and navigate to the FlowFI directory. Then use the following command in your command line:
 
 ```
 pip install -r requirements.txt
 ```
 
-## Run FlowFI
+## Run FlowFI from Source
 While in the FlowFI directory, run the following in the commandline:
 ```
 python3 main.py

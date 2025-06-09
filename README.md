@@ -54,7 +54,7 @@ ls - Laplace Score - This is the raw basis of the importance which is used for a
 membership - numerical id of the cluster this feature belongs to\
 centrality - numerical score from 0-1 with 1 corresponding to the feature with the highest centrality
 
-## Using FlowFI: Feature Design
+# Using FlowFI: Feature Design
 
 FlowFI offers feature design options that are minimal for now but also allow for import of .tiff images from other image manipulation software like Fiji/ImageJ. Crucially, FlowFI allows for image features such as total area of a masked image, unique values (e.g. for segmentation) and other numerical values to be converted into .fcs parameters using the images provided. These parameters can then be reimported e.g. into FlowJo for analysis purposes. 
 

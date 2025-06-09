@@ -54,7 +54,9 @@ ls - Laplace Score - This is the raw basis of the importance which is used for a
 membership - numerical id of the cluster this feature belongs to\
 centrality - numerical score from 0-1 with 1 corresponding to the feature with the highest centrality
 
+## Using FlowFI: Feature Design
 
+FlowFI offers feature design options that are minimal for now but also allow for import of .tiff images from other image manipulation software like Fiji/ImageJ. Crucially, FlowFI allows for image features such as total area of a masked image, unique values (e.g. for segmentation) and other numerical values to be converted into .fcs parameters using the images provided. These parameters can then be reimported e.g. into FlowJo for analysis purposes. 
 
 # Creating a FlowFI Executable from Source
 These instructions assume a working version of Python 3.10 that is accessible from the command line. In order to prevent the executable from becoming too large, it is best to make the executable in a fresh virtual environment. To do this in Linux, navigate to the FlowIO directory in the command line and use the following commands:
